@@ -4,6 +4,13 @@ A personal, mobile-first command center for a residential new-home sales consult
 
 All data stays private in your browser (localStorage). Use **Playbook → Settings & Backup** to export or import a JSON backup.
 
+## Open the app
+
+- **Right now:** your private claude.ai link — https://claude.ai/artifact/9NtPLdKaBTw66XACWJFKLw (only you can open it unless you share it).
+- **Your own web address:** deploy this repo on Netlify (see *Deploying* below), then on your phone open the site and choose **Add to Home Screen**.
+
+Each place keeps its own copy of your data. Move data between them with **Playbook → Settings & Backup → Copy backup**, then paste it into the other copy's restore box.
+
 ## What's inside
 
 | Tab | What it does |
@@ -23,6 +30,7 @@ npm run dev      # http://localhost:4321
 npm run build
 npm test         # util / scoring / templates / schedule-check tests
 npm run check    # typecheck + tests
+npm run build:standalone   # single HTML file (used for the claude.ai link)
 ```
 
 ### Reliability notes
@@ -32,4 +40,10 @@ npm run check    # typecheck + tests
 - **Privacy:** `netlify.toml` and `robots.txt` keep the site out of search engines and set security headers. Your buyer data never leaves the browser.
 - **Navigation:** the phone/browser Back button moves between screens, and Escape closes sheets.
 
-Built with Astro + React and deployed on Netlify. The app ships with sample data. To clear it, use **Playbook → Settings & Backup → Start fresh**.
+## Deploying
+
+1. Merge this branch into `main`.
+2. In Netlify: **Add new site → Import an existing project → GitHub →** pick this repo. The defaults (`npm run build`, publish `dist`) work as-is.
+3. Open the Netlify URL on your phone → Share → **Add to Home Screen**.
+
+Built with Astro + React. The app ships with sample data. To clear it, use **Playbook → Settings & Backup → Start fresh**.

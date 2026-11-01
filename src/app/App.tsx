@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { StoreProvider, useStore } from './store';
-import { Icon } from './ui';
+import { ConfirmDialog, Icon } from './ui';
 import Home from './screens/Home';
 import Buyers from './screens/Buyers';
 import BuyerDetail from './screens/BuyerDetail';
@@ -56,15 +56,23 @@ function Shell() {
 
     // Wire screens into browser history so the phone/browser Back button works.
     useEffect(() => {
-        history.replaceState({ nav: { tab: 'home' }, depth: 0 }, '');
+        try {
+            history.replaceState({ nav: { tab: 'home' }, depth: 0 }, '');
+        } catch {
+            /* history unavailable in this host — in-app navigation still works */
+        }
         const onPop = (e: PopStateEvent) => setNav((e.state?.nav as Nav) ?? { tab: 'home' });
         window.addEventListener('popstate', onPop);
         return () => window.removeEventListener('popstate', onPop);
     }, []);
 
     const push = (next: Nav) => {
-        const depth = ((history.state?.depth as number) ?? 0) + 1;
-        history.pushState({ nav: next, depth }, '');
+        try {
+            const depth = ((history.state?.depth as number) ?? 0) + 1;
+            history.pushState({ nav: next, depth }, '');
+        } catch {
+            /* ignore */
+        }
         setNav(next);
     };
 
@@ -74,7 +82,13 @@ function Shell() {
         openBuyer: (id) => push({ ...nav, buyerId: id }),
         closeBuyer: () => value.back({ ...nav, buyerId: undefined }),
         back: (fallback) => {
-            if ((history.state?.depth ?? 0) > 0) history.back();
+            let depth = 0;
+            try {
+                depth = history.state?.depth ?? 0;
+            } catch {
+                /* ignore */
+            }
+            if (depth > 0) history.back();
             else setNav(fallback);
         }
     };
@@ -105,6 +119,7 @@ function Shell() {
                         </button>
                     ))}
                 </nav>
+                <ConfirmDialog />
                 {toastMsg && <div className="toast" role="status">{toastMsg}</div>}
             </div>
         </Ctx.Provider>

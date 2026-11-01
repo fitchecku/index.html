@@ -526,8 +526,9 @@ function Briefs() {
 }
 
 function SettingsView() {
-    const { data, update, replace, toast } = useStore();
+    const { data, update, replace, toast, ask } = useStore();
     const s = data.settings;
+    const [paste, setPaste] = useState('');
     const file = useRef<HTMLInputElement>(null);
     const set = (k: keyof typeof s, v: string) => update((d) => ({ ...d, settings: { ...d.settings, [k]: ['rate', 'taxRate', 'insurance', 'hoa'].includes(k) ? Number(v) : v } }));
     const exportData = () => {
@@ -538,16 +539,23 @@ function SettingsView() {
         a.click();
         URL.revokeObjectURL(a.href);
     };
-    const importData = (f: File) => {
-        f.text()
-            .then((t) => {
-                const d = normalize(JSON.parse(t));
-                if (!d) throw new Error('bad');
-                if (!confirm(`Replace current data with this backup (${d.buyers.length} buyers)?`)) return;
-                replace(d);
-                toast('Backup restored');
-            })
-            .catch(() => toast('That file is not a valid backup'));
+    const restore = async (text: string) => {
+        let d = null;
+        try {
+            d = normalize(JSON.parse(text));
+        } catch {
+            /* invalid JSON */
+        }
+        if (!d) return toast('That is not a valid backup');
+        if (!(await ask(`Replace your current data with this backup (${d.buyers.length} buyers)?`, 'Restore'))) return;
+        replace(d);
+        setPaste('');
+        toast('Backup restored');
+    };
+    const importData = (f: File) => f.text().then(restore);
+    const copyBackup = async () => {
+        const ok = await copyText(JSON.stringify(data));
+        toast(ok ? 'Backup copied — paste it into a note or email to yourself' : 'Copy failed — use Download backup');
     };
     return (
         <>
@@ -585,13 +593,18 @@ function SettingsView() {
             </div>
 
             <SectionHead title="Your data" />
-            <p className="muted small">Everything is stored privately in this browser on this device. Export a backup regularly, and import it to move to another device.</p>
+            <p className="muted small">Everything is stored privately in this browser on this device. Back up regularly, and restore the backup to move to another device or browser.</p>
             <div className="row gap wrap">
-                <button className="btn" onClick={exportData}>
-                    Export backup
+                <button className="btn" onClick={copyBackup}>
+                    <Icon name="copy" size={16} /> Copy backup
                 </button>
+                {!(window as unknown as { __SALES_STANDALONE__?: boolean }).__SALES_STANDALONE__ && (
+                    <button className="btn" onClick={exportData}>
+                        Download backup
+                    </button>
+                )}
                 <button className="btn" onClick={() => file.current?.click()}>
-                    Import backup
+                    Restore from file
                 </button>
                 <input ref={file} type="file" accept="application/json" hidden onChange={(e) => {
                         const f = e.target.files?.[0];
@@ -599,11 +612,19 @@ function SettingsView() {
                         if (f) importData(f);
                     }} />
             </div>
+            <Field label="Or paste a copied backup to restore" hint="If a download doesn't start, use Copy backup instead.">
+                <textarea id="paste-backup" rows={3} value={paste} onChange={(e) => setPaste(e.target.value)} placeholder='{"version":1,…}' />
+            </Field>
+            {paste.trim() && (
+                <button className="btn primary sm" onClick={() => restore(paste)}>
+                    Restore pasted backup
+                </button>
+            )}
             <div className="row gap wrap" style={{ marginTop: 12 }}>
                 <button
                     className="btn danger"
-                    onClick={() => {
-                        if (confirm('Clear all buyers, tasks, homes and appointments? Your profile is kept. Export a backup first if needed.')) {
+                    onClick={async () => {
+                        if (await ask('Clear all buyers, tasks, homes and appointments? Your profile is kept. Back up first if you might need them.', 'Clear data')) {
                             replace(emptyData(s));
                             toast('Started fresh');
                         }
@@ -613,8 +634,8 @@ function SettingsView() {
                 </button>
                 <button
                     className="btn"
-                    onClick={() => {
-                        if (confirm('Replace everything with sample data?')) replace(sampleData());
+                    onClick={async () => {
+                        if (await ask('Replace everything with sample data?', 'Load samples')) replace(sampleData());
                     }}
                 >
                     Load sample data

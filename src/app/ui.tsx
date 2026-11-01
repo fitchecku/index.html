@@ -222,3 +222,21 @@ export function DraftBox({ subject, body, channel, to, maxWords = 250 }: { subje
 export function Pill({ children, tone = 'default' }: { children: ReactNode; tone?: 'default' | 'green' | 'red' | 'amber' | 'blue' }) {
     return <span className={`pill ${tone}`}>{children}</span>;
 }
+
+export function ConfirmDialog() {
+    const { pending } = useStore();
+    if (!pending) return null;
+    return (
+        <Sheet title="Please confirm" onClose={() => pending.resolve(false)}>
+            <p>{pending.message}</p>
+            <div className="sticky-actions">
+                <button className="btn" onClick={() => pending.resolve(false)}>
+                    Cancel
+                </button>
+                <button className="btn primary" onClick={() => pending.resolve(true)} autoFocus>
+                    {pending.confirmLabel}
+                </button>
+            </div>
+        </Sheet>
+    );
+}

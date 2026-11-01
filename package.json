@@ -9,7 +9,8 @@
         "preview": "astro preview",
         "astro": "astro",
         "test": "esbuild tests/util.test.ts --bundle --platform=node --format=esm --jsx=automatic --log-level=error --outfile=node_modules/.cache/tests.mjs && node node_modules/.cache/tests.mjs",
-        "check": "tsc --noEmit -p . && npm test"
+        "check": "tsc --noEmit -p . && npm test",
+        "build:standalone": "node scripts/build-standalone.mjs"
     },
     "dependencies": {
         "@astrojs/netlify": "^6.2.3",

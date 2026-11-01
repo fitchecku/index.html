@@ -26,7 +26,7 @@ import { addDays, daysUntil, firstName, fmtDate, money, relDay, toDateTime, toda
 type View = 'overview' | 'qualify' | 'build' | 'activity';
 
 export default function BuyerDetail({ id }: { id: string }) {
-    const { data, saveBuyer, update, toast } = useStore();
+    const { data, saveBuyer, update, toast, ask } = useStore();
     const { closeBuyer, go } = useNav();
     const b = data.buyers.find((x) => x.id === id)!;
     const [view, setView] = useState<View>('overview');
@@ -250,8 +250,8 @@ export default function BuyerDetail({ id }: { id: string }) {
                     <button
                         className="btn danger sm"
                         style={{ marginTop: 24 }}
-                        onClick={() => {
-                            if (confirm(`Delete ${b.name}? This can't be undone.`)) {
+                        onClick={async () => {
+                            if (await ask(`Delete ${b.name} and their tasks? This can't be undone.`, 'Delete')) {
                                 update((d) => ({ ...d, buyers: d.buyers.filter((x) => x.id !== b.id), tasks: d.tasks.filter((t) => t.buyerId !== b.id) }));
                                 closeBuyer();
                             }

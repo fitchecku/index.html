@@ -174,6 +174,9 @@ interface Ctx {
     saveBuyer: (b: Buyer) => void;
     toast: (msg: string) => void;
     toastMsg: string;
+    /** In-app confirmation (browser confirm() is blocked in some hosts). Resolves true when confirmed. */
+    ask: (message: string, confirmLabel?: string) => Promise<boolean>;
+    pending: { message: string; confirmLabel: string; resolve: (ok: boolean) => void } | null;
 }
 
 const StoreCtx = createContext<Ctx | null>(null);
@@ -181,6 +184,21 @@ const StoreCtx = createContext<Ctx | null>(null);
 export function StoreProvider({ children }: { children: ReactNode }) {
     const [data, setData] = useState<AppData>(() => withSnapshot(load()));
     const [toastMsg, setToast] = useState('');
+    const [pending, setPending] = useState<Ctx['pending']>(null);
+    const ask = useCallback(
+        (message: string, confirmLabel = 'Confirm') =>
+            new Promise<boolean>((resolve) =>
+                setPending({
+                    message,
+                    confirmLabel,
+                    resolve: (ok) => {
+                        setPending(null);
+                        resolve(ok);
+                    }
+                })
+            ),
+        []
+    );
     const timer = useRef<number>();
 
     const toast = useCallback((msg: string) => {
@@ -236,7 +254,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         [update]
     );
 
-    return <StoreCtx.Provider value={{ data, update, replace, saveBuyer, toast, toastMsg }}>{children}</StoreCtx.Provider>;
+    return <StoreCtx.Provider value={{ data, update, replace, saveBuyer, toast, toastMsg, ask, pending }}>{children}</StoreCtx.Provider>;
 }
 
 export function useStore() {
