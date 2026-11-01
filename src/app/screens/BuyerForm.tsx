@@ -41,6 +41,7 @@ export default function BuyerForm({ initial, onClose, onSaved }: { initial: Buye
     const save = () => {
         if (!b.name.trim()) return toast('Add a name first');
         let out = { ...b, name: b.name.trim() };
+        if (out.saleType === 'inventory' && (out.stage === 'design' || out.stage === 'construction')) out.stage = 'contract';
         if (out.saleType === 'bto' && !out.milestones) out.milestones = freshMilestones();
         const home = data.homes.find((h) => h.id === out.homeId);
         if (home && !out.price) out = { ...out, price: home.price, community: out.community ?? home.community, plan: out.plan ?? home.plan };
@@ -57,7 +58,7 @@ export default function BuyerForm({ initial, onClose, onSaved }: { initial: Buye
             </Field>
             <Segmented<SaleType>
                 value={b.saleType}
-                onChange={(v) => set('saleType', v)}
+                onChange={(v) => setB((p) => ({ ...p, saleType: v, stage: v === 'inventory' && (p.stage === 'design' || p.stage === 'construction') ? 'contract' : p.stage }))}
                 options={[
                     { value: 'inventory', label: 'Move-in ready' },
                     { value: 'bto', label: 'Build-to-order' }

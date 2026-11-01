@@ -109,15 +109,48 @@ export function emptyData(settings = DEFAULT_SETTINGS): AppData {
     return { version: 1, isSample: false, settings, buyers: [], tasks: [], homes: [], competitors: [], appointments: [], history: [] };
 }
 
+/** Fill in any missing fields so older or hand-edited backups can't crash the app. Returns null if unusable. */
+export function normalize(raw: unknown): AppData | null {
+    if (!raw || typeof raw !== 'object') return null;
+    const d = raw as Partial<AppData>;
+    if (d.version !== 1 || !Array.isArray(d.buyers)) return null;
+    const arr = <T,>(v: T[] | undefined) => (Array.isArray(v) ? v : []);
+    return {
+        ...emptyData(),
+        ...d,
+        version: 1,
+        isSample: !!d.isSample,
+        settings: { ...DEFAULT_SETTINGS, ...(d.settings ?? {}) },
+        buyers: d.buyers
+            .filter((b) => b && typeof b === 'object' && b.id && b.name)
+            .map((b) => ({ timeline: '', financing: 'unknown', currentHome: 'unknown', saleType: 'inventory', stage: 'lead', createdAt: toDateTime(new Date()), ...b, interactions: arr(b.interactions) }) as Buyer),
+        tasks: arr(d.tasks),
+        homes: arr(d.homes),
+        competitors: arr(d.competitors),
+        appointments: arr(d.appointments),
+        history: arr(d.history)
+    };
+}
+
 function load(): AppData {
+    let raw: string | null = null;
     try {
-        const raw = localStorage.getItem(KEY);
-        if (raw) {
-            const d = JSON.parse(raw) as AppData;
-            if (d && d.version === 1) return { ...emptyData(), ...d, settings: { ...DEFAULT_SETTINGS, ...d.settings } };
-        }
+        raw = localStorage.getItem(KEY);
     } catch {
-        /* fall through */
+        return sampleData(); // storage blocked (private mode etc.)
+    }
+    if (!raw) return sampleData();
+    try {
+        const d = normalize(JSON.parse(raw));
+        if (d) return d;
+    } catch {
+        /* corrupt JSON */
+    }
+    // Never silently overwrite unreadable data — park a copy so it can be recovered.
+    try {
+        localStorage.setItem(`${KEY}-recovery-${Date.now()}`, raw);
+    } catch {
+        /* ignore */
     }
     return sampleData();
 }
@@ -150,16 +183,50 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const [toastMsg, setToast] = useState('');
     const timer = useRef<number>();
 
+    const toast = useCallback((msg: string) => {
+        setToast(msg);
+        window.clearTimeout(timer.current);
+        timer.current = window.setTimeout(() => setToast(''), 2200);
+    }, []);
+
+    const lastSaved = useRef('');
+    const warned = useRef(false);
     useEffect(() => {
+        const json = JSON.stringify(data);
+        if (json === lastSaved.current) return;
         try {
-            localStorage.setItem(KEY, JSON.stringify(data));
+            localStorage.setItem(KEY, json);
+            lastSaved.current = json;
+            warned.current = false;
         } catch {
-            /* storage unavailable */
+            if (!warned.current) {
+                warned.current = true;
+                toast('⚠ Could not save — export a backup in Settings');
+            }
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [data]);
 
+    // Keep multiple open tabs/windows in sync instead of overwriting each other.
+    useEffect(() => {
+        const onStorage = (e: StorageEvent) => {
+            if (e.key !== KEY || !e.newValue || e.newValue === lastSaved.current) return;
+            try {
+                const d = normalize(JSON.parse(e.newValue));
+                if (d) {
+                    lastSaved.current = e.newValue;
+                    setData(d);
+                }
+            } catch {
+                /* ignore */
+            }
+        };
+        window.addEventListener('storage', onStorage);
+        return () => window.removeEventListener('storage', onStorage);
+    }, []);
+
     const update = useCallback((fn: (d: AppData) => AppData) => setData((d) => withSnapshot(fn(d))), []);
-    const replace = useCallback((d: AppData) => setData(withSnapshot(d)), []);
+    const replace = useCallback((d: AppData) => setData(withSnapshot(normalize(d) ?? d)), []);
     const saveBuyer = useCallback(
         (b: Buyer) =>
             update((d) => ({
@@ -168,11 +235,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             })),
         [update]
     );
-    const toast = useCallback((msg: string) => {
-        setToast(msg);
-        window.clearTimeout(timer.current);
-        timer.current = window.setTimeout(() => setToast(''), 2200);
-    }, []);
 
     return <StoreCtx.Provider value={{ data, update, replace, saveBuyer, toast, toastMsg }}>{children}</StoreCtx.Provider>;
 }

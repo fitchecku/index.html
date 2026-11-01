@@ -169,7 +169,8 @@ export const INTERNAL_RECIPIENTS = ['Sales manager', 'Project manager', 'Constru
 
 export function internalMessage(to: string, ctx: Ctx & { objective: string; action: string; deadline: string; context: string }) {
     const { b, s } = ctx;
-    const ref = b ? `${b.name}${b.plan || b.homeId ? ` — ${b.plan ?? ''} ${ctx.homes.find((h) => h.id === b.homeId)?.address ?? ''}`.trimEnd() : ''}` : '';
+    const homeRef = b ? [b.plan, ctx.homes.find((h) => h.id === b.homeId)?.address].filter(Boolean).join(' ') : '';
+    const ref = b ? `${b.name}${homeRef ? ` — ${homeRef}` : ''}` : '';
     return {
         subject: `${ref ? `${ref}: ` : ''}${ctx.objective || '[Objective]'}${ctx.deadline ? ` (by ${fmtDate(ctx.deadline)})` : ''}`,
         body: `Hi ${to} team,\n\nObjective: ${ctx.objective || '[what you need to accomplish]'}\nRequired action: ${ctx.action || '[specific ask]'}\nDeadline: ${ctx.deadline ? fmtLongDate(ctx.deadline) : '[date]'}\n\nContext:\n${ctx.context || (b ? `${b.name} — ${stageLabel(b.stage)}${b.closingDate ? `, closing ${fmtDate(b.closingDate)}` : ''}. ${b.financing !== 'unknown' ? `Financing: ${FINANCING_LABEL[b.financing]}.` : ''}` : '[relevant background]')}\n\nThank you!\n${s.name}`

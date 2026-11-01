@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import type { Competitor, Home } from '../types';
-import { useStore, emptyData, sampleData } from '../store';
+import { useStore, emptyData, normalize, sampleData } from '../store';
 import { useNav } from '../App';
 import { DraftBox, Field, Icon, Pill, SectionHead, Sheet } from '../ui';
 import { DECISION_SECTIONS, DISCOVERY, OBJECTIONS, RESEARCH_SECTIONS } from '../templates';
@@ -19,7 +19,7 @@ const TILES = [
 ];
 
 export default function Tools({ tool }: { tool?: string }) {
-    const { go } = useNav();
+    const { go, back } = useNav();
     if (!tool)
         return (
             <div>
@@ -41,7 +41,7 @@ export default function Tools({ tool }: { tool?: string }) {
     return (
         <div>
             <header className="topbar">
-                <button className="icon-btn" onClick={() => go({ tab: 'tools' })} aria-label="Back">
+                <button className="icon-btn" onClick={() => back({ tab: 'tools' })} aria-label="Back">
                     <Icon name="back" />
                 </button>
                 <h1 className="h-sm">{t.title}</h1>
@@ -541,8 +541,9 @@ function SettingsView() {
     const importData = (f: File) => {
         f.text()
             .then((t) => {
-                const d = JSON.parse(t);
-                if (d?.version !== 1 || !Array.isArray(d.buyers)) throw new Error('bad');
+                const d = normalize(JSON.parse(t));
+                if (!d) throw new Error('bad');
+                if (!confirm(`Replace current data with this backup (${d.buyers.length} buyers)?`)) return;
                 replace(d);
                 toast('Backup restored');
             })
@@ -592,7 +593,11 @@ function SettingsView() {
                 <button className="btn" onClick={() => file.current?.click()}>
                     Import backup
                 </button>
-                <input ref={file} type="file" accept="application/json" hidden onChange={(e) => e.target.files?.[0] && importData(e.target.files[0])} />
+                <input ref={file} type="file" accept="application/json" hidden onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        e.target.value = '';
+                        if (f) importData(f);
+                    }} />
             </div>
             <div className="row gap wrap" style={{ marginTop: 12 }}>
                 <button

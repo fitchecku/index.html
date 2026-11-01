@@ -3,7 +3,7 @@ import { useStore } from '../store';
 import { useNav } from '../App';
 import { AreaChart, Icon, Pill, SectionHead, Segmented } from '../ui';
 import { closingsThisMonth, dueFollowUps, isActive, isUnderContract, likelihood, needsAttention, nextAction, pipelineValue, risks, stageShort } from '../logic';
-import { addDays, daysUntil, fmtDate, fmtTime, money, relDay, relDayInline, today } from '../util';
+import { addDays, daysUntil, fmtDate, fmtTime, money, relDay, relDayInline, today, ts } from '../util';
 
 type Range = '1W' | '1M' | '3M' | '1Y' | 'ALL';
 const RANGE_DAYS: Record<Range, number> = { '1W': 7, '1M': 30, '3M': 90, '1Y': 365, ALL: 100000 };
@@ -84,7 +84,7 @@ export default function Home() {
             <div className="scoreboard" aria-label="Today's appointments">
                 {todays.length === 0 && <div className="score-card muted-card">No appointments today</div>}
                 {todays.map((a) => {
-                    const s = new Date(a.start).getTime();
+                    const s = ts(a.start);
                     const live = now >= s && now <= s + a.duration * 60000;
                     const done = now > s + a.duration * 60000;
                     return (

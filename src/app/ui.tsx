@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { copyText, wordCount } from './util';
 import { placeholderCount } from './templates';
 import { useStore } from './store';
@@ -43,6 +43,7 @@ export function Icon({ name, size = 20, className = '' }: { name: keyof typeof p
 export function AreaChart({ points, up, height = 170, onHover }: { points: number[]; up: boolean; height?: number; onHover?: (i: number | null) => void }) {
     const w = 600;
     const [hover, setHover] = useState<number | null>(null);
+    const gid = `fill-${useId().replace(/:/g, '')}`;
     const { d, area, coords } = useMemo(() => {
         if (points.length < 2) return { d: '', area: '', coords: [] as [number, number][] };
         const min = Math.min(...points);
@@ -68,12 +69,12 @@ export function AreaChart({ points, up, height = 170, onHover }: { points: numbe
     return (
         <svg viewBox={`0 0 ${w} ${height}`} preserveAspectRatio="none" className="chart" onPointerMove={move} onPointerLeave={leave} role="img" aria-label="Weighted pipeline trend">
             <defs>
-                <linearGradient id="fill" x1="0" x2="0" y1="0" y2="1">
+                <linearGradient id={gid} x1="0" x2="0" y1="0" y2="1">
                     <stop offset="0%" stopColor={color} stopOpacity="0.25" />
                     <stop offset="100%" stopColor={color} stopOpacity="0" />
                 </linearGradient>
             </defs>
-            <path d={area} fill="url(#fill)" />
+            <path d={area} fill={`url(#${gid})`} />
             <path d={d} fill="none" stroke={color} strokeWidth={2.4} vectorEffect="non-scaling-stroke" />
             {hover !== null && coords[hover] && (
                 <>
@@ -110,6 +111,18 @@ export function SectionHead({ title, action, onAction }: { title: string; action
 }
 
 export function Sheet({ title, onClose, children, wide }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
+    const close = useRef(onClose);
+    close.current = onClose;
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close.current();
+        window.addEventListener('keydown', onKey);
+        const prev = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => {
+            window.removeEventListener('keydown', onKey);
+            document.body.style.overflow = prev;
+        };
+    }, []);
     return (
         <div className="sheet-backdrop" onClick={onClose}>
             <div className={`sheet ${wide ? 'wide' : ''}`} onClick={(e) => e.stopPropagation()} role="dialog" aria-label={title}>

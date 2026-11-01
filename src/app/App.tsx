@@ -31,6 +31,8 @@ interface NavCtx {
     go: (n: Partial<Nav> & { tab: Tab }) => void;
     openBuyer: (id: string) => void;
     closeBuyer: () => void;
+    /** Return to the previous screen (same as the phone/browser Back button). */
+    back: (fallback: Nav) => void;
 }
 
 const Ctx = createContext<NavCtx | null>(null);
@@ -52,11 +54,29 @@ function Shell() {
         window.scrollTo({ top: 0 });
     }, [nav.tab, nav.buyerId, nav.tool]);
 
+    // Wire screens into browser history so the phone/browser Back button works.
+    useEffect(() => {
+        history.replaceState({ nav: { tab: 'home' }, depth: 0 }, '');
+        const onPop = (e: PopStateEvent) => setNav((e.state?.nav as Nav) ?? { tab: 'home' });
+        window.addEventListener('popstate', onPop);
+        return () => window.removeEventListener('popstate', onPop);
+    }, []);
+
+    const push = (next: Nav) => {
+        const depth = ((history.state?.depth as number) ?? 0) + 1;
+        history.pushState({ nav: next, depth }, '');
+        setNav(next);
+    };
+
     const value: NavCtx = {
         nav,
-        go: (n) => setNav({ ...n }),
-        openBuyer: (id) => setNav((p) => ({ ...p, buyerId: id })),
-        closeBuyer: () => setNav((p) => ({ ...p, buyerId: undefined }))
+        go: (n) => push({ ...n }),
+        openBuyer: (id) => push({ ...nav, buyerId: id }),
+        closeBuyer: () => value.back({ ...nav, buyerId: undefined }),
+        back: (fallback) => {
+            if ((history.state?.depth ?? 0) > 0) history.back();
+            else setNav(fallback);
+        }
     };
 
     const buyerOpen = nav.buyerId && data.buyers.some((b) => b.id === nav.buyerId);
@@ -79,7 +99,7 @@ function Shell() {
                 </main>
                 <nav className="tabbar" aria-label="Main">
                     {TABS.map((t) => (
-                        <button key={t.key} className={nav.tab === t.key && !buyerOpen ? 'on' : ''} onClick={() => setNav({ tab: t.key })} aria-current={nav.tab === t.key}>
+                        <button key={t.key} className={nav.tab === t.key && !buyerOpen ? 'on' : ''} onClick={() => push({ tab: t.key })} aria-current={nav.tab === t.key}>
                             <Icon name={t.icon} size={22} />
                             <span>{t.label}</span>
                         </button>

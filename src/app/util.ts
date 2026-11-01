@@ -14,10 +14,13 @@ export const addDays = (date: string | Date, days: number) => {
 
 /** Parse YYYY-MM-DD as a local date (not UTC). */
 export const parseDate = (s: string) => {
-    if (s.length > 10) return new Date(s);
-    const [y, m, d] = s.split('-').map(Number);
-    return new Date(y, m - 1, d);
+    const m = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/.exec(s);
+    if (!m) return new Date(s);
+    return new Date(+m[1], +m[2] - 1, +m[3], m[4] ? +m[4] : 0, m[5] ? +m[5] : 0);
 };
+
+/** Milliseconds timestamp for a local 'YYYY-MM-DDTHH:mm' string. */
+export const ts = (s: string) => parseDate(s).getTime();
 
 /** Whole days from today until date (negative = in the past). */
 export const daysUntil = (s?: string) => {
@@ -35,8 +38,10 @@ export const daysSince = (s?: string) => {
 export const money = (n?: number, compact = false) => {
     if (n === undefined || n === null || isNaN(n)) return '—';
     if (compact && Math.abs(n) >= 1000) {
-        if (Math.abs(n) >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
-        return `$${Math.round(n / 1000)}K`;
+        const sign = n < 0 ? '-' : '';
+        const a = Math.abs(n);
+        if (a >= 999_500) return `${sign}$${(a / 1_000_000).toFixed(2)}M`;
+        return `${sign}$${Math.round(a / 1000)}K`;
     }
     return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
 };
@@ -54,7 +59,7 @@ export const fmtLongDate = (s?: string) => {
 };
 
 export const fmtTime = (s: string) => {
-    const d = new Date(s);
+    const d = parseDate(s);
     return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 };
 
@@ -89,9 +94,11 @@ export async function copyText(text: string) {
 }
 
 export function monthlyPayment(price: number, downPct: number, ratePct: number, years: number) {
-    const principal = price * (1 - downPct / 100);
-    const r = ratePct / 100 / 12;
-    const n = years * 12;
+    const clamp = (v: number, lo: number, hi: number) => (Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : lo);
+    const principal = clamp(price, 0, 1e9) * (1 - clamp(downPct, 0, 100) / 100);
+    const r = clamp(ratePct, 0, 50) / 100 / 12;
+    const n = Math.round(clamp(years, 0, 50) * 12);
+    if (principal === 0 || n === 0) return 0;
     if (r === 0) return principal / n;
     return (principal * r) / (1 - Math.pow(1 + r, -n));
 }

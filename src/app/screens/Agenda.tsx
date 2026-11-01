@@ -4,7 +4,7 @@ import { useStore } from '../store';
 import { useNav } from '../App';
 import { DraftBox, Field, Icon, SectionHead, Segmented, Sheet } from '../ui';
 import { dueFollowUps, isActive, likelihood, nextAction, stageShort } from '../logic';
-import { addDays, daysUntil, fmtLongDate, fmtTime, parseDate, relDay, toDateTime, today, uid } from '../util';
+import { addDays, daysUntil, fmtLongDate, fmtTime, parseDate, relDay, toDate, toDateTime, today, uid } from '../util';
 
 export default function Agenda({ initial }: { initial?: 'schedule' | 'tasks' }) {
     const [view, setView] = useState<'schedule' | 'tasks'>(initial ?? 'schedule');
@@ -28,40 +28,42 @@ export default function Agenda({ initial }: { initial?: 'schedule' | 'tasks' }) 
 
 const BUYER_TYPES: ApptType[] = ['tour', 'discovery', 'design', 'contract', 'closing', 'follow-up', 'construction'];
 
-function scheduleCheck(appts: Appointment[], followUps: number) {
+export function scheduleCheck(appts: Appointment[], followUps: number, day: string, now = new Date()) {
     const out: { tone: 'red' | 'amber' | 'green'; text: string }[] = [];
     const sorted = [...appts].sort((a, b) => a.start.localeCompare(b.start));
+    const mins = (a: Appointment) => {
+        const d = parseDate(a.start);
+        return d.getHours() * 60 + d.getMinutes();
+    };
     let booked = 0;
-    for (let i = 0; i < sorted.length; i++) {
-        const a = sorted[i];
+    // Track the appointment that runs latest so far, so long blocks catch every overlap.
+    let latest: Appointment | undefined;
+    for (const a of sorted) {
         booked += a.duration;
-        const prev = sorted[i - 1];
-        if (!prev) continue;
-        const prevEnd = new Date(prev.start).getTime() + prev.duration * 60000;
-        const gap = (new Date(a.start).getTime() - prevEnd) / 60000;
-        if (gap < 0) out.push({ tone: 'red', text: `Conflict: “${a.title}” overlaps “${prev.title}”. Move the lower-priority item.` });
-        else if (gap < 20 && prev.location && a.location && prev.location !== a.location)
-            out.push({ tone: 'amber', text: `Only ${gap} min to get from ${prev.location} to ${a.location} before “${a.title}”. Add travel time.` });
-        else if (gap < 15 && BUYER_TYPES.includes(a.type)) out.push({ tone: 'amber', text: `No prep time before “${a.title}”. Block 15 min to review the buyer.` });
+        if (latest) {
+            const gap = mins(a) - (mins(latest) + latest.duration);
+            if (gap < 0) out.push({ tone: 'red', text: `Conflict: “${a.title}” overlaps “${latest.title}”. Move the lower-priority item.` });
+            else if (gap < 20 && latest.location && a.location && latest.location.trim().toLowerCase() !== a.location.trim().toLowerCase())
+                out.push({ tone: 'amber', text: `Only ${gap} min to get from ${latest.location} to ${a.location} before “${a.title}”. Add travel time.` });
+            else if (gap < 15 && BUYER_TYPES.includes(a.type)) out.push({ tone: 'amber', text: `No prep time before “${a.title}”. Block 15 min to review the buyer.` });
+        }
+        if (!latest || mins(a) + a.duration > mins(latest) + latest.duration) latest = a;
     }
     if (booked > 6 * 60) out.push({ tone: 'amber', text: `${Math.round(booked / 60)} hours booked — protect time for follow-ups and lunch.` });
     if (followUps) {
-        // find first free 30-min slot between 8:00 and 18:00
+        // First free 30-min slot between 8:00 and 18:00 — never in the past when planning today.
+        const isToday = day === toDate(now);
+        const earliest = isToday ? Math.ceil((now.getHours() * 60 + now.getMinutes()) / 30) * 30 : 0;
         let slot = '';
-        for (let m = 8 * 60; m <= 17.5 * 60; m += 30) {
-            const s = m,
-                e = m + 30;
-            const busy = sorted.some((a) => {
-                const d = new Date(a.start);
-                const as = d.getHours() * 60 + d.getMinutes();
-                return as < e && as + a.duration > s;
-            });
+        for (let m = Math.max(8 * 60, earliest); m + 30 <= 18 * 60; m += 30) {
+            const busy = sorted.some((a) => mins(a) < m + 30 && mins(a) + a.duration > m);
             if (!busy) {
                 slot = `${Math.floor(m / 60) % 12 || 12}:${String(m % 60).padStart(2, '0')} ${m < 720 ? 'AM' : 'PM'}`;
                 break;
             }
         }
-        out.push({ tone: 'green', text: `${followUps} follow-up${followUps > 1 ? 's' : ''} due — block 30 min${slot ? ` at ${slot}` : ''} for calls and texts.` });
+        const label = `${followUps} follow-up${followUps > 1 ? 's' : ''} due`;
+        out.push({ tone: 'green', text: slot ? `${label} — block 30 min at ${slot} for calls and texts.` : `${label} — no open 30-min slot left before 6 PM; send quick texts between appointments.` });
     }
     if (!out.length) out.push({ tone: 'green', text: 'Schedule looks efficient — buffers and prep time are in place.' });
     return out;
@@ -75,7 +77,7 @@ function Schedule() {
     const days = Array.from({ length: 7 }, (_, i) => addDays(today(), i));
     const appts = data.appointments.filter((a) => a.start.startsWith(day)).sort((a, b) => a.start.localeCompare(b.start));
     const fu = day === today() ? dueFollowUps(data).length : data.buyers.filter((b) => b.nextFollowUp === day).length;
-    const checks = scheduleCheck(appts, fu);
+    const checks = scheduleCheck(appts, fu, day);
 
     return (
         <>

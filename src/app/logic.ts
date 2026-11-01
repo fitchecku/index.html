@@ -101,7 +101,8 @@ export function likelihood(b: Buyer): number {
         if (fin === 'clear-to-close' || fin === 'cash') s += 5;
         if (b.currentHome === 'own-must-sell') s -= 5;
     }
-    const since = daysSince(b.lastContact);
+    // Never-contacted buyers age from when they were added.
+    const since = daysSince(b.lastContact ?? b.createdAt);
     if (since !== undefined) {
         if (since > 21) s -= 15;
         else if (since > 10) s -= 8;
@@ -128,6 +129,10 @@ export function risks(b: Buyer, homes: Home[]): Risk[] {
     const fu = daysUntil(b.nextFollowUp);
     const contract = isUnderContract(b);
 
+    if (!b.lastContact && b.stage === 'lead') {
+        const age = daysSince(b.createdAt) ?? 0;
+        out.push({ level: age >= 1 ? 'high' : 'medium', text: age >= 1 ? `New lead not contacted (${age}d)` : 'New lead — respond within the hour' });
+    }
     if (fu !== undefined && fu < 0) out.push({ level: 'high', text: `Follow-up overdue by ${-fu} day${fu === -1 ? '' : 's'}` });
     if (!b.nextFollowUp) out.push({ level: 'medium', text: 'No next follow-up scheduled' });
     if (since !== undefined && since > (contract ? 14 : 7))
@@ -161,7 +166,10 @@ export function risks(b: Buyer, homes: Home[]): Risk[] {
     return out;
 }
 
-export const needsAttention = (b: Buyer, homes: Home[]) => risks(b, homes).some((r) => r.level === 'high') || risks(b, homes).length >= 3;
+export const needsAttention = (b: Buyer, homes: Home[]) => {
+    const r = risks(b, homes);
+    return r.some((x) => x.level === 'high') || r.length >= 3;
+};
 
 /* -------------------------------- Qualification gaps -------------------------------- */
 

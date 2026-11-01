@@ -21,6 +21,15 @@ All data stays private in your browser (localStorage). Use **Playbook → Settin
 npm install
 npm run dev      # http://localhost:4321
 npm run build
+npm test         # util / scoring / templates / schedule-check tests
+npm run check    # typecheck + tests
 ```
+
+### Reliability notes
+
+- **Offline:** a service worker (`public/sw.js`) caches the app so it opens without signal once it has been loaded.
+- **Data safety:** if saved data is ever unreadable, it's copied to a `homesales-assistant-v1-recovery-*` key instead of being overwritten. A warning appears if saving fails (storage full). Multiple open tabs stay in sync.
+- **Privacy:** `netlify.toml` and `robots.txt` keep the site out of search engines and set security headers. Your buyer data never leaves the browser.
+- **Navigation:** the phone/browser Back button moves between screens, and Escape closes sheets.
 
 Built with Astro + React and deployed on Netlify. The app ships with sample data. To clear it, use **Playbook → Settings & Backup → Start fresh**.
