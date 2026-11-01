@@ -1,51 +1,26 @@
-# Astro on Netlify Platform Starter
+# New Home Sales Assistant
 
-[Live Demo](https://astro-platform-starter.netlify.app/)
+A personal, mobile-first command center for a residential new-home sales consultant. It uses a Robinhood-style portfolio view for the pipeline, an ESPN-style scoreboard and headlines for what needs attention today, and a playbook built on the "Executive AI Assistant for a Residential New Home Sales Consultant" instructions.
 
-A modern starter based on Astro.js, Tailwind, and [Netlify Core Primitives](https://docs.netlify.com/core/overview/#develop) (Edge Functions, Image CDN, Blob Store).
+All data stays private in your browser (localStorage). Use **Playbook → Settings & Backup** to export or import a JSON backup.
 
-## Astro Commands
+## What's inside
 
-All commands are run from the root of the project, from a terminal:
+| Tab | What it does |
+| --- | --- |
+| **Home** | Weighted pipeline value with a trend chart (1W–ALL), today's appointments as a scoreboard, stat strip, **Top Headlines** (overdue follow-ups, closing risks, genuine incentive deadlines, referral asks), follow-ups due, a starred watchlist and "Work smarter" tips. |
+| **Buyers** | Pipeline standings by stage, search and filters (needs attention, move-in ready, build-to-order, under contract), likelihood-to-close score. |
+| **Buyer page** | CRM summary (stage, likelihood, next follow-up, risks, outstanding tasks, recommended next action), stage tracker, qualification gaps with natural follow-up questions, a construction milestone timeline for build-to-order homes (only *confirmed* dates are shared), an activity log and a **Wrap-up** step after each meeting. Wrap-up produces the meeting summary, CRM note, action items as tasks, and a follow-up email or text. |
+| **Write** | Buyer emails and texts for 11 situations (new lead → referral), internal messages to the PM, lender, title and others (objective / action / deadline / context), and meeting prep (objectives, questions, likely objections, matching homes, talking points, desired outcome). Drafts show a word count (emails under 250 words), flag every `[bracket]` item that needs confirming, and open straight in Mail or Messages. |
+| **Agenda** | 7-day schedule with a **schedule check** (conflicts, travel buffers, prep time, follow-up blocks) plus tasks organized as Priority Tasks, Upcoming Deadlines, Buyer Follow-Ups, Internal Actions, Questions Needing Answers and Next Steps, with a copyable daily plan. |
+| **Playbook** | Objection handling (acknowledge → explore → respond), discovery question bank, two-scenario payment calculator, inventory homes with side-by-side compare, a competitor intel matrix with verification dates, the follow-up cadence, research and decision brief builders, and settings. |
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
-
-## Deploying to Netlify
-
-[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/netlify-templates/astro-platform-starter)
-
-## Developing Locally
-
-| Prerequisites                                                                |
-| :--------------------------------------------------------------------------- |
-| [Node.js](https://nodejs.org/) v18.14+.                                      |
-| (optional) [nvm](https://github.com/nvm-sh/nvm) for Node version management. |
-
-1. Clone this repository, then run `npm install` in its root directory.
-
-2. For the starter to have full functionality locally (e.g. edge functions, blob store), please ensure you have an up-to-date version of Netlify CLI. Run:
+## Develop
 
 ```
-npm install netlify-cli@latest -g
+npm install
+npm run dev      # http://localhost:4321
+npm run build
 ```
 
-3. Link your local repository to the deployed Netlify site. This will ensure you're using the same runtime version for both local development and your deployed site.
-
-```
-netlify link
-```
-
-4. Then, run the Astro.js development server via Netlify CLI:
-
-```
-netlify dev
-```
-
-If your browser doesn't navigate to the site automatically, visit [localhost:8888](http://localhost:8888).
+Built with Astro + React and deployed on Netlify. The app ships with sample data. To clear it, use **Playbook → Settings & Backup → Start fresh**.
